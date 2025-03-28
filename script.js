@@ -286,13 +286,26 @@ class AIAssistant {
     
     // ایجاد گفتگوی جدید
     createNewChat() {
+        // ذخیره گفتگوی فعلی قبل از ایجاد گفتگوی جدید
         this.autoSaveCurrentChat();
+        
+        // پاکسازی پیام‌های فعلی
         this.clearChatMessages();
+        
+        // ایجاد شناسه منحصر به فرد برای گفتگوی جدید
+        this.currentConversationId = Date.now().toString();
+        
+        // ایجاد یک گفتگوی جدید در آرایه conversations
+        this.conversations = [{
+            id: this.currentConversationId,
+            messages: []
+        }];
+        
+        // ذخیره‌سازی در localStorage
+        this.saveConversations();
+        
+        // نمایش پیام خوش‌آمدگویی
         this.showWelcomeMessage();
-        this.conversations = [];
-        if (this.welcomeMessage) {
-            this.welcomeMessage.classList.remove('hidden');
-        }
         
         // آیا انیمیشن لوگو را دوباره اجرا کنیم
         const logo = document.querySelector('.large-logo');
@@ -604,15 +617,16 @@ class AIAssistant {
             this.autoSaveCurrentChat();
             
             // دریافت تاریخچه از localStorage
-            const chatHistory = this.loadChatHistory();
+            const chatHistory = localStorage.getItem('chatHistory');
+            const parsedHistory = chatHistory ? JSON.parse(chatHistory) : [];
             
-            if (chatHistory.length === 0) {
+            if (parsedHistory.length === 0) {
                 this.showNotification('تاریخچه‌ای برای پشتیبان‌گیری وجود ندارد.', 'warning');
                 return;
             }
             
             // تبدیل به رشته JSON با فرمت زیبا
-            const historyJSON = JSON.stringify(chatHistory, null, 2);
+            const historyJSON = JSON.stringify(parsedHistory, null, 2);
             
             // ایجاد فایل برای دانلود
             const blob = new Blob([historyJSON], { type: 'application/json' });
@@ -725,9 +739,21 @@ class AIAssistant {
     loadChatHistory() {
         try {
             const history = localStorage.getItem('chatHistory');
-            return history ? JSON.parse(history) : [];
+            if (!history) return [];
+            
+            const parsedHistory = JSON.parse(history);
+            
+            // بررسی اعتبار داده‌ها
+            if (!Array.isArray(parsedHistory)) {
+                console.error('خطا: فرمت تاریخچه نامعتبر است');
+                return [];
+            }
+            
+            return parsedHistory;
         } catch (error) {
             console.error('خطا در بارگیری تاریخچه:', error);
+            // پاک کردن مقدار نامعتبر برای جلوگیری از خطاهای مکرر
+            localStorage.removeItem('chatHistory');
             return [];
         }
     }
@@ -750,11 +776,14 @@ class AIAssistant {
                 // افزودن کلاس active به دکمه تنظیمات
                 if (settingsButton) settingsButton.classList.add('active');
                 
-                // بررسی اتصال به API
-                this.checkAPIConnection();
-                
                 // بارگذاری تنظیمات ذخیره شده
                 this.loadSavedSettings();
+                
+                // بررسی اتصال به API - فقط اگر کلید API وجود داشته باشد
+                const apiKey = document.getElementById('apiKey').value;
+                if (apiKey) {
+                    this.checkAPIConnection();
+                }
             }
         }
     }
@@ -805,31 +834,41 @@ class AIAssistant {
     // بارگذاری تنظیمات ذخیره شده
     loadSavedSettings() {
         const savedSettings = localStorage.getItem('ai-assistant-settings');
+        const isMobile = window.innerWidth <= 768;
+        
         if (savedSettings) {
             try {
                 const settings = JSON.parse(savedSettings);
                 
                 // پر کردن فرم با مقادیر ذخیره شده
                 if (settings.apiKey) document.getElementById('apiKey').value = settings.apiKey;
+                
+                // در موبایل فقط مقادیر را تنظیم کنیم بدون بارگذاری مدل‌ها
                 if (settings.selectedModel) {
                     this.selectedModel = settings.selectedModel;
                     
-                    // اطمینان از اینکه گزینه‌ها در لیست وجود دارد
-                    this.fetchModels().then(() => {
-                        this.selectModelById(settings.selectedModel);
-                    });
-                } else {
-                    // اگر مدلی انتخاب نشده بود، لیست مدل‌ها را بارگذاری می‌کنیم
-                    this.fetchModels();
+                    // در حالت موبایل نیازی به بارگذاری خودکار مدل‌ها نیست
+                    if (!isMobile) {
+                        // لیست مدل‌ها را به صورت اتوماتیک بارگذاری نکنیم
+                        const selectedDisplay = document.getElementById('selectedModelDisplay');
+                        if (selectedDisplay) {
+                            selectedDisplay.textContent = settings.selectedModel.split('/').pop() || 'انتخاب مدل';
+                        }
+                    }
                 }
                 
                 // تنظیم وضعیت تم
                 const themeToggle = document.getElementById('themeToggle');
-                themeToggle.checked = settings.isDarkTheme || false;
+                if (themeToggle) {
+                    themeToggle.checked = settings.isDarkTheme || false;
+                }
                 
                 // تنظیم لحن انتخاب شده
                 if (settings.selectedTone) {
-                    document.getElementById('toneSelect').value = settings.selectedTone;
+                    const toneSelect = document.getElementById('toneSelect');
+                    if (toneSelect) {
+                        toneSelect.value = settings.selectedTone;
+                    }
                 }
                 
                 // بارگذاری تم رنگی
@@ -847,13 +886,7 @@ class AIAssistant {
                 this.applySettings(settings);
             } catch (e) {
                 console.error('خطا در بارگذاری تنظیمات:', e);
-                
-                // در صورت خطا، حداقل لیست مدل‌ها را بارگذاری می‌کنیم
-                this.fetchModels();
             }
-        } else {
-            // اگر تنظیماتی وجود نداشت، لیست مدل‌ها را بارگذاری می‌کنیم
-            this.fetchModels();
         }
     }
     
@@ -949,6 +982,11 @@ class AIAssistant {
         const apiKey = document.getElementById('apiKey').value;
         
         if (!apiKey) {
+            // در حالت موبایل، به جای نمایش نوتیفیکیشن، فقط وضعیت را تغییر دهیم
+            if (window.innerWidth <= 768) {
+                return;
+            }
+            
             this.showNotification('لطفا ابتدا کلید API را وارد کنید', 'error');
             return;
         }
@@ -1035,7 +1073,10 @@ class AIAssistant {
                     }
                 }
                 
-                this.showNotification('لیست مدل‌ها با موفقیت بارگذاری شد', 'success');
+                // نمایش اعلان موفقیت (فقط در دسکتاپ)
+                if (window.innerWidth > 768) {
+                    this.showNotification('لیست مدل‌ها با موفقیت بارگذاری شد', 'success');
+                }
             } else {
                 throw new Error('خطا در دریافت مدل‌ها');
             }
@@ -1046,7 +1087,10 @@ class AIAssistant {
                 modelOptions.innerHTML = '<li class="error-item">خطا در دریافت مدل‌ها</li>';
             }
             
-            this.showNotification('خطا در دریافت لیست مدل‌ها', 'error');
+            // نمایش اعلان خطا (فقط در دسکتاپ)
+            if (window.innerWidth > 768) {
+                this.showNotification('خطا در دریافت لیست مدل‌ها', 'error');
+            }
         } finally {
             // حذف حالت بارگذاری
             if (refreshButton) {
