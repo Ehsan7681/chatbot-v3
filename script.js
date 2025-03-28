@@ -1,46 +1,54 @@
 // کلاس اصلی برنامه دستیار هوش مصنوعی
 class AIAssistant {
     constructor() {
-        // مقداردهی اولیه
-        this.conversations = [];
-        this.currentConversationId = null;
-        this.messageHistory = [];
-        this.selectedMessageId = null;
-        this.chatHistory = [];
-        this.selectedChatId = null;
-        this.deleteType = null;
-        this.isScrolledToBottom = true; // آیا کاربر در پایین چت است؟
-        
-        // انتخاب عناصر DOM
+        // نود‌های DOM
         this.welcomeMessage = document.querySelector('.welcome-message');
-        this.chatContainer = document.querySelector('.chat-container');
         this.messageInput = document.querySelector('.message-input');
         this.sendButton = document.querySelector('.send-button');
-        this.attachButton = document.querySelector('.attach-button');
-        this.refreshButton = document.querySelector('button.icon-button:nth-child(2)');
-        this.videoButton = document.querySelector('button.icon-button:nth-child(1)');
-        this.newChatButton = document.querySelector('button.icon-button:nth-child(3)');
-        this.settingsButton = document.querySelector('.settings-container .icon-button');
-        this.mobileMenuBtn = document.querySelector('.mobile-menu-btn');
-        this.sidebar = document.querySelector('.sidebar');
-        this.inputContainer = document.querySelector('.input-container');
+        this.chatContainer = document.querySelector('.chat-container');
+        this.settingsPanel = document.getElementById('settingsPanel');
+        this.closeSettingsButton = document.querySelector('.settings-close');
+        this.saveSettingsButton = document.getElementById('saveSettingsBtn');
+        this.apiKeyInput = document.getElementById('apiKey');
+        this.apiEndpointInput = document.getElementById('apiEndpoint');
+        this.modelSelect = document.getElementById('modelSelect');
+        this.temperatureInput = document.getElementById('temperature');
+        this.darkThemeSwitch = document.getElementById('darkThemeSwitch');
+        this.customPromptInput = document.getElementById('systemPrompt');
         
-        // بارگذاری گفتگوهای قبلی از localStorage
+        // متغیرهای داخلی
+        this.isScrolledToBottom = true;
+        this.selectedMessageId = null;
+        this.history = [];
+        this.conversations = [];
+        this.currentConversationId = null;
+        this.settings = {
+            apiKey: '',
+            apiEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
+            model: 'anthropic/claude-3-opus:beta',
+            temperature: 0.7,
+            darkTheme: false,
+            systemPrompt: 'You are Claude, a helpful and harmless AI assistant.'
+        };
+        this.models = [];
+        
+        // بارگذاری تنظیمات و گفتگوها از localStorage
+        this.loadSavedSettings();
         this.loadConversations();
         
-        // بارگذاری تاریخچه پیام‌ها از localStorage
-        this.loadHistory();
+        // بررسی وجود گفتگوی قبلی
+        if (this.conversations && this.conversations.length > 0) {
+            this.loadLastConversation();
+        } else {
+            // مقداردهی اولیه آرایه گفتگوها
+            this.conversations = [];
+            this.createNewChat();
+        }
         
         // اتصال رویدادها
         this.initializeEventListeners();
-        
-        // ایجاد یک گفتگوی جدید به صورت پیش‌فرض اگر گفتگویی وجود ندارد
-        if (this.conversations.length === 0) {
-            this.createNewChat();
-        } else {
-            // بارگذاری آخرین گفتگو
-            this.loadLastConversation();
-        }
+        this.initColorThemeEvents();
+        this.autoResizeTextarea();
     }
     
     // اتصال رویدادها به عناصر مختلف
@@ -116,21 +124,8 @@ class AIAssistant {
             }
         });
         
-        // اتصال رویدادهای تم‌های رنگی در تنظیمات
-        const colorThemeOptions = document.querySelectorAll('.color-theme-option');
-        colorThemeOptions.forEach(option => {
-            option.addEventListener('click', () => {
-                // حذف کلاس active از همه‌ی گزینه‌ها
-                colorThemeOptions.forEach(opt => opt.classList.remove('active'));
-                
-                // اضافه کردن کلاس active به گزینه‌ی انتخاب شده
-                option.classList.add('active');
-                
-                // اعمال تم رنگی
-                const theme = option.dataset.theme;
-                this.applyColorTheme(theme);
-            });
-        });
+        // اتصال مجدد رویدادهای تم‌های رنگی در تنظیمات
+        this.initColorThemeEvents();
         
         // بارگذاری تم ذخیره شده
         this.loadSavedColorTheme();
@@ -221,6 +216,56 @@ class AIAssistant {
         // رویدادهای دیگر از طریق index.html اتصال داده شده‌اند
     }
     
+    // متد جدید برای اتصال رویدادهای تم‌های رنگی
+    initColorThemeEvents() {
+        const colorThemeOptions = document.querySelectorAll('.color-theme-option');
+        if (!colorThemeOptions || colorThemeOptions.length === 0) {
+            console.log('هیچ دکمه تم رنگی پیدا نشد');
+            return;
+        }
+        
+        console.log(`${colorThemeOptions.length} دکمه تم رنگی پیدا شد`);
+        
+        // حذف رویدادهای قبلی و اتصال مجدد
+        colorThemeOptions.forEach(option => {
+            // ابتدا تمام رویدادهای قبلی را حذف می‌کنیم
+            const newOption = option.cloneNode(true);
+            option.parentNode.replaceChild(newOption, option);
+            
+            // سپس رویداد جدید را اضافه می‌کنیم
+            newOption.addEventListener('click', () => {
+                // حذف کلاس active از همه‌ی گزینه‌ها
+                document.querySelectorAll('.color-theme-option').forEach(opt => {
+                    opt.classList.remove('active');
+                });
+                
+                // اضافه کردن کلاس active به گزینه‌ی انتخاب شده
+                newOption.classList.add('active');
+                
+                // اعمال تم رنگی
+                const theme = newOption.dataset.theme;
+                console.log(`تم رنگی انتخاب شده: ${theme}`);
+                this.applyColorTheme(theme);
+                
+                // ذخیره تنظیمات برای حفظ تغییرات
+                const apiKey = document.getElementById('apiKey').value || '';
+                const isDarkTheme = document.getElementById('themeToggle')?.checked || false;
+                const selectedTone = document.getElementById('toneSelect')?.value || 'professional';
+                
+                // ذخیره در localStorage
+                const settings = {
+                    apiKey,
+                    selectedModel: this.selectedModel || '',
+                    isDarkTheme,
+                    selectedTone,
+                    colorTheme: theme
+                };
+                
+                localStorage.setItem('ai-assistant-settings', JSON.stringify(settings));
+            });
+        });
+    }
+    
     // تغییر اندازه خودکار textarea
     autoResizeTextarea() {
         const textarea = this.messageInput;
@@ -296,10 +341,15 @@ class AIAssistant {
         this.currentConversationId = Date.now().toString();
         
         // ایجاد یک گفتگوی جدید در آرایه conversations
-        this.conversations = [{
+        const newConversation = {
             id: this.currentConversationId,
-            messages: []
-        }];
+            title: "گفتگوی جدید",
+            messages: [],
+            createdAt: new Date().toISOString()
+        };
+        
+        // اضافه کردن گفتگوی جدید به آرایه
+        this.conversations.push(newConversation);
         
         // ذخیره‌سازی در localStorage
         this.saveConversations();
@@ -315,6 +365,8 @@ class AIAssistant {
                 logo.style.animation = 'float 6s ease-in-out infinite';
             }, 10);
         }
+        
+        console.log("چت جدید ایجاد شد با شناسه:", this.currentConversationId);
     }
     
     // پاکسازی پیام‌های چت
@@ -617,37 +669,51 @@ class AIAssistant {
             this.autoSaveCurrentChat();
             
             // دریافت تاریخچه از localStorage
-            const chatHistory = localStorage.getItem('chatHistory');
-            const parsedHistory = chatHistory ? JSON.parse(chatHistory) : [];
+            const chatHistory = localStorage.getItem('ai-assistant-conversations');
             
-            if (parsedHistory.length === 0) {
+            // بررسی مقدار تاریخچه
+            if (!chatHistory) {
                 this.showNotification('تاریخچه‌ای برای پشتیبان‌گیری وجود ندارد.', 'warning');
                 return;
             }
             
-            // تبدیل به رشته JSON با فرمت زیبا
-            const historyJSON = JSON.stringify(parsedHistory, null, 2);
-            
-            // ایجاد فایل برای دانلود
-            const blob = new Blob([historyJSON], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            
-            // ایجاد لینک دانلود و کلیک خودکار
-            const a = document.createElement('a');
-            const date = new Date();
-            const dateStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
-            a.href = url;
-            a.download = `chatgpt-backup-${dateStr}.json`;
-            document.body.appendChild(a);
-            a.click();
-            
-            // پاکسازی
-            setTimeout(() => {
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }, 100);
-            
-            this.showNotification('پشتیبان‌گیری با موفقیت انجام شد.', 'success');
+            try {
+                // تبدیل به آبجکت برای اطمینان از معتبر بودن JSON
+                const parsedHistory = JSON.parse(chatHistory);
+                
+                if (!Array.isArray(parsedHistory) || parsedHistory.length === 0) {
+                    this.showNotification('تاریخچه‌ای برای پشتیبان‌گیری وجود ندارد.', 'warning');
+                    return;
+                }
+                
+                // تبدیل به رشته JSON با فرمت زیبا
+                const historyJSON = JSON.stringify(parsedHistory, null, 2);
+                
+                // ایجاد فایل برای دانلود
+                const blob = new Blob([historyJSON], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                // ایجاد لینک دانلود و کلیک خودکار
+                const a = document.createElement('a');
+                const date = new Date();
+                const dateStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+                a.href = url;
+                a.download = `chatgpt-backup-${dateStr}.json`;
+                document.body.appendChild(a);
+                a.click();
+                
+                // پاکسازی
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                
+                this.showNotification('پشتیبان‌گیری با موفقیت انجام شد.', 'success');
+            } catch (e) {
+                console.error('خطا در پردازش داده‌های تاریخچه:', e);
+                this.showNotification('داده‌های تاریخچه نامعتبر است. لطفاً دوباره تلاش کنید.', 'error');
+                return;
+            }
         } catch (error) {
             console.error('خطا در پشتیبان‌گیری:', error);
             this.showNotification('خطا در پشتیبان‌گیری. لطفاً دوباره تلاش کنید.', 'error');
@@ -686,7 +752,10 @@ class AIAssistant {
                         // آیا کاربر مطمئن است که می‌خواهد تاریخچه فعلی را جایگزین کند؟
                         if (confirm('آیا مطمئن هستید که می‌خواهید تاریخچه فعلی را با تاریخچه از فایل پشتیبان جایگزین کنید؟')) {
                             // ذخیره در localStorage
-                            localStorage.setItem('chatHistory', JSON.stringify(restoredHistory));
+                            localStorage.setItem('ai-assistant-conversations', JSON.stringify(restoredHistory));
+                            
+                            // بازیابی تاریخچه بازیابی شده در حافظه
+                            this.conversations = restoredHistory;
                             
                             // بازخوانی تاریخچه و نمایش مجدد
                             this.renderChatHistory();
@@ -738,7 +807,7 @@ class AIAssistant {
     // بارگیری تاریخچه گفتگو از localStorage
     loadChatHistory() {
         try {
-            const history = localStorage.getItem('chatHistory');
+            const history = localStorage.getItem('ai-assistant-conversations');
             if (!history) return [];
             
             const parsedHistory = JSON.parse(history);
@@ -746,6 +815,8 @@ class AIAssistant {
             // بررسی اعتبار داده‌ها
             if (!Array.isArray(parsedHistory)) {
                 console.error('خطا: فرمت تاریخچه نامعتبر است');
+                // پاک کردن داده‌های نامعتبر
+                localStorage.removeItem('ai-assistant-conversations');
                 return [];
             }
             
@@ -753,7 +824,7 @@ class AIAssistant {
         } catch (error) {
             console.error('خطا در بارگیری تاریخچه:', error);
             // پاک کردن مقدار نامعتبر برای جلوگیری از خطاهای مکرر
-            localStorage.removeItem('chatHistory');
+            localStorage.removeItem('ai-assistant-conversations');
             return [];
         }
     }
@@ -762,6 +833,9 @@ class AIAssistant {
     openSettings() {
         const settingsPanel = document.getElementById('settingsPanel');
         const settingsButton = document.querySelector('.settings-container .icon-button');
+        const mobileSettingsBtn = document.getElementById('mobileSettingsBtn');
+        
+        console.log('openSettings فراخوانی شد');
         
         if (settingsPanel) {
             // بررسی وضعیت فعلی پنل
@@ -770,11 +844,13 @@ class AIAssistant {
                 settingsPanel.classList.remove('active');
                 // حذف کلاس active از دکمه تنظیمات
                 if (settingsButton) settingsButton.classList.remove('active');
+                if (mobileSettingsBtn) mobileSettingsBtn.classList.remove('active');
             } else {
                 // اگر پنل بسته است، آن را باز کنیم
                 settingsPanel.classList.add('active');
                 // افزودن کلاس active به دکمه تنظیمات
                 if (settingsButton) settingsButton.classList.add('active');
+                if (mobileSettingsBtn) mobileSettingsBtn.classList.add('active');
                 
                 // بارگذاری تنظیمات ذخیره شده
                 this.loadSavedSettings();
@@ -784,7 +860,12 @@ class AIAssistant {
                 if (apiKey) {
                     this.checkAPIConnection();
                 }
+                
+                // اتصال مجدد رویدادهای تم‌های رنگی - مهم برای کارکرد صحیح دکمه‌های تم
+                this.initColorThemeEvents();
             }
+        } else {
+            console.error('پنل تنظیمات پیدا نشد!');
         }
     }
     
@@ -792,11 +873,13 @@ class AIAssistant {
     closeSettings() {
         const settingsPanel = document.getElementById('settingsPanel');
         const settingsButton = document.querySelector('.settings-container .icon-button');
+        const mobileSettingsBtn = document.getElementById('mobileSettingsBtn');
         
         if (settingsPanel) {
             settingsPanel.classList.remove('active');
             // حذف کلاس active از دکمه تنظیمات
             if (settingsButton) settingsButton.classList.remove('active');
+            if (mobileSettingsBtn) mobileSettingsBtn.classList.remove('active');
         }
     }
     
@@ -1580,6 +1663,9 @@ class AIAssistant {
     handleHistoryFeature() {
         const historyPanel = document.getElementById('historyPanel');
         const historyButton = document.getElementById('historyButton');
+        const mobileHistoryBtn = document.getElementById('mobileHistoryBtn');
+        
+        console.log('handleHistoryFeature فراخوانی شد');
         
         if (historyPanel) {
             // بررسی وضعیت فعلی پنل
@@ -1588,11 +1674,13 @@ class AIAssistant {
                 historyPanel.classList.remove('active');
                 // حذف کلاس active از دکمه تاریخچه
                 if (historyButton) historyButton.classList.remove('active');
+                if (mobileHistoryBtn) mobileHistoryBtn.classList.remove('active');
             } else {
                 // اگر پنل بسته است، آن را باز کنیم
                 historyPanel.classList.add('active');
                 // افزودن کلاس active به دکمه تاریخچه
                 if (historyButton) historyButton.classList.add('active');
+                if (mobileHistoryBtn) mobileHistoryBtn.classList.add('active');
                 
                 // بارگذاری تاریخچه
                 this.loadHistory();
@@ -1600,6 +1688,8 @@ class AIAssistant {
                 // نمایش تاریخچه
                 this.renderChatHistory();
             }
+        } else {
+            console.error('پنل تاریخچه پیدا نشد!');
         }
     }
     
@@ -1607,11 +1697,13 @@ class AIAssistant {
     closeHistory() {
         const historyPanel = document.getElementById('historyPanel');
         const historyButton = document.getElementById('historyButton');
+        const mobileHistoryBtn = document.getElementById('mobileHistoryBtn');
         
         if (historyPanel) {
             historyPanel.classList.remove('active');
             // حذف کلاس active از دکمه تاریخچه
             if (historyButton) historyButton.classList.remove('active');
+            if (mobileHistoryBtn) mobileHistoryBtn.classList.remove('active');
         }
     }
     
@@ -2081,34 +2173,50 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (mobileHistoryBtn) {
         mobileHistoryBtn.addEventListener('click', () => {
-            window.assistant.handleHistoryFeature();
-            
-            // تغییر حالت فعال دکمه
-            mobileHistoryBtn.classList.add('active');
-            mobileNewChatBtn.classList.remove('active');
-            mobileSettingsBtn.classList.remove('active');
+            // اطمینان از اینکه به نمونه اصلی AIAssistant دسترسی داریم
+            if (window.assistant) {
+                window.assistant.handleHistoryFeature();
+                console.log('دکمه تاریخچه موبایل کلیک شد');
+                
+                // تغییر حالت فعال دکمه
+                mobileHistoryBtn.classList.add('active');
+                if (mobileNewChatBtn) mobileNewChatBtn.classList.remove('active');
+                if (mobileSettingsBtn) mobileSettingsBtn.classList.remove('active');
+            } else {
+                console.error('نمونه assistant پیدا نشد');
+            }
         });
     }
     
     if (mobileNewChatBtn) {
         mobileNewChatBtn.addEventListener('click', () => {
-            window.assistant.createNewChat();
-            
-            // تغییر حالت فعال دکمه
-            mobileHistoryBtn.classList.remove('active');
-            mobileNewChatBtn.classList.add('active');
-            mobileSettingsBtn.classList.remove('active');
+            if (window.assistant) {
+                window.assistant.createNewChat();
+                console.log('دکمه چت جدید موبایل کلیک شد');
+                
+                // تغییر حالت فعال دکمه
+                if (mobileHistoryBtn) mobileHistoryBtn.classList.remove('active');
+                mobileNewChatBtn.classList.add('active');
+                if (mobileSettingsBtn) mobileSettingsBtn.classList.remove('active');
+            } else {
+                console.error('نمونه assistant پیدا نشد');
+            }
         });
     }
     
     if (mobileSettingsBtn) {
         mobileSettingsBtn.addEventListener('click', () => {
-            window.assistant.openSettings();
-            
-            // تغییر حالت فعال دکمه
-            mobileHistoryBtn.classList.remove('active');
-            mobileNewChatBtn.classList.remove('active');
-            mobileSettingsBtn.classList.add('active');
+            if (window.assistant) {
+                window.assistant.openSettings();
+                console.log('دکمه تنظیمات موبایل کلیک شد');
+                
+                // تغییر حالت فعال دکمه
+                if (mobileHistoryBtn) mobileHistoryBtn.classList.remove('active');
+                if (mobileNewChatBtn) mobileNewChatBtn.classList.remove('active');
+                mobileSettingsBtn.classList.add('active');
+            } else {
+                console.error('نمونه assistant پیدا نشد');
+            }
         });
     }
 });

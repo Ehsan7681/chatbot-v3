@@ -19,6 +19,60 @@
     --primary-color-rgb: 79, 70, 229;
 }
 
+/* تم آبی */
+body.theme-blue {
+    --primary-color: rgba(59, 130, 246, 0.8);
+    --primary-hover: rgba(37, 99, 235, 0.9);
+    --primary-color-light: rgba(59, 130, 246, 0.2);
+    --primary-color-lighter: rgba(59, 130, 246, 0.1);
+    --primary-color-rgb: 59, 130, 246;
+}
+
+/* تم سبز */
+body.theme-green {
+    --primary-color: rgba(16, 185, 129, 0.8);
+    --primary-hover: rgba(5, 150, 105, 0.9);
+    --primary-color-light: rgba(16, 185, 129, 0.2);
+    --primary-color-lighter: rgba(16, 185, 129, 0.1);
+    --primary-color-rgb: 16, 185, 129;
+}
+
+/* تم نارنجی */
+body.theme-orange {
+    --primary-color: rgba(249, 115, 22, 0.8);
+    --primary-hover: rgba(234, 88, 12, 0.9);
+    --primary-color-light: rgba(249, 115, 22, 0.2);
+    --primary-color-lighter: rgba(249, 115, 22, 0.1);
+    --primary-color-rgb: 249, 115, 22;
+}
+
+/* تم قرمز */
+body.theme-red {
+    --primary-color: rgba(239, 68, 68, 0.8);
+    --primary-hover: rgba(220, 38, 38, 0.9);
+    --primary-color-light: rgba(239, 68, 68, 0.2);
+    --primary-color-lighter: rgba(239, 68, 68, 0.1);
+    --primary-color-rgb: 239, 68, 68;
+}
+
+/* تم صورتی */
+body.theme-pink {
+    --primary-color: rgba(236, 72, 153, 0.8);
+    --primary-hover: rgba(219, 39, 119, 0.9);
+    --primary-color-light: rgba(236, 72, 153, 0.2);
+    --primary-color-lighter: rgba(236, 72, 153, 0.1);
+    --primary-color-rgb: 236, 72, 153;
+}
+
+/* تم تیره */
+body.theme-dark {
+    --primary-color: rgba(55, 65, 81, 0.8);
+    --primary-hover: rgba(31, 41, 55, 0.9);
+    --primary-color-light: rgba(55, 65, 81, 0.2);
+    --primary-color-lighter: rgba(55, 65, 81, 0.1);
+    --primary-color-rgb: 55, 65, 81;
+}
+
 @keyframes float {
     0% {
         transform: translateY(0px);
@@ -2046,4 +2100,73 @@ body.pwa-installed .input-container {
         width: 24px;
         height: 24px;
     }
+}
+
+/* استایل‌های دکمه‌های تم رنگی */
+.color-themes-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.color-theme-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 10px;
+    border-radius: 8px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border: 1px solid var(--glass-border);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex: 1 0 calc(25% - 10px);
+}
+
+.color-theme-option:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+}
+
+.color-theme-option.active {
+    border: 2px solid var(--primary-color);
+    background: var(--primary-color-lighter);
+}
+
+.color-preview {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.color-preview.default {
+    background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+}
+
+.color-preview.blue {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.color-preview.green {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.color-preview.orange {
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+}
+
+.color-preview.red {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.color-preview.pink {
+    background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+}
+
+.color-preview.dark {
+    background: linear-gradient(135deg, #4b5563 0%, #1f2937 100%);
 } 
