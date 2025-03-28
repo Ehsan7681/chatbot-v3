@@ -265,9 +265,12 @@ class AIAssistant {
             // نمایش پیام‌های گفتگو
             if (lastConversation.messages.length > 0) {
                 this.hideWelcomeMessage();
+                const chatMessages = document.querySelector('.chat-messages');
+                if (!chatMessages) return;
+                
                 lastConversation.messages.forEach(msg => {
                     const messageElement = this.createMessageElement(msg.sender, msg.text);
-                    this.chatContainer.insertBefore(messageElement, this.inputContainer);
+                    chatMessages.appendChild(messageElement);
                 });
                 
                 // اسکرول به پایین چت پس از بارگذاری پیام‌ها
@@ -303,9 +306,10 @@ class AIAssistant {
     
     // پاکسازی پیام‌های چت
     clearChatMessages() {
-        // حذف همه پیام‌ها به جز عناصر اصلی
-        const messagesToRemove = document.querySelectorAll('.message-bubble');
-        messagesToRemove.forEach(msg => msg.remove());
+        const chatMessages = document.querySelector('.chat-messages');
+        if (chatMessages) {
+            chatMessages.innerHTML = '';
+        }
     }
     
     // نمایش پیام خوش‌آمدگویی
@@ -356,8 +360,12 @@ class AIAssistant {
         // ایجاد حباب پیام
         const messageElement = this.createMessageElement(sender, text);
         
-        // افزودن به DOM قبل از container ورودی پیام
-        this.chatContainer.insertBefore(messageElement, this.inputContainer);
+        // پیدا کردن container پیام‌ها
+        const chatMessages = document.querySelector('.chat-messages');
+        if (!chatMessages) return;
+        
+        // افزودن به container پیام‌ها
+        chatMessages.appendChild(messageElement);
         
         // قبل از افزودن پیام جدید، وضعیت اسکرول را بررسی کنیم
         this.handleScroll();
@@ -466,7 +474,11 @@ class AIAssistant {
         typingIndicator.innerHTML = '<span></span><span></span><span></span>';
         
         typingElement.appendChild(typingIndicator);
-        this.chatContainer.insertBefore(typingElement, this.inputContainer);
+        
+        const chatMessages = document.querySelector('.chat-messages');
+        if (chatMessages) {
+            chatMessages.appendChild(typingElement);
+        }
         
         // اطمینان از اسکرول به پایین برای دیدن نشانگر تایپ
         this.isScrolledToBottom = true;
@@ -1820,39 +1832,36 @@ class AIAssistant {
         }
     }
     
-    // بازیابی گفتگو از تاریخچه
+    // بارگذاری چت از تاریخچه
     loadChatFromHistory(chatId) {
-        // یافتن گفتگوی ذخیره شده
-        const savedChat = this.chatHistory.find(chat => chat.id === chatId);
-        if (!savedChat) return;
+        // یافتن چت موردنظر
+        const chat = this.chatHistory.find(c => c.id === chatId);
+        if (!chat) return;
         
-        // ایجاد یک گفتگوی جدید بر اساس گفتگوی ذخیره شده
-        this.currentConversationId = Date.now().toString();
-        const newConversation = {
-            id: this.currentConversationId,
-            messages: JSON.parse(JSON.stringify(savedChat.conversation.messages))
-        };
+        // تنظیم چت فعلی
+        this.selectedChatId = chatId;
+        this.currentConversationId = chatId;
         
-        // افزودن به لیست گفتگوها
-        this.conversations.push(newConversation);
-        
-        // ذخیره تغییرات
-        this.saveConversations();
-        
-        // پاکسازی پیام‌های قبلی
+        // پاکسازی پیام‌های فعلی
         this.clearChatMessages();
         
-        // نمایش پیام‌های گفتگو
-        if (newConversation.messages.length > 0) {
+        // نمایش پیام‌های چت
+        if (chat.messages && chat.messages.length > 0) {
             this.hideWelcomeMessage();
-            newConversation.messages.forEach(msg => {
+            
+            const chatMessages = document.querySelector('.chat-messages');
+            if (!chatMessages) return;
+            
+            chat.messages.forEach(msg => {
                 const messageElement = this.createMessageElement(msg.sender, msg.text);
-                this.chatContainer.insertBefore(messageElement, this.inputContainer);
+                chatMessages.appendChild(messageElement);
             });
             
-            // اسکرول به پایین چت پس از بارگذاری پیام‌ها
-            this.isScrolledToBottom = true;
-            this.scrollToBottom();
+            // اسکرول به پایین
+            setTimeout(() => {
+                this.isScrolledToBottom = true;
+                this.scrollToBottom();
+            }, 100);
         } else {
             this.showWelcomeMessage();
         }
@@ -1860,14 +1869,7 @@ class AIAssistant {
         // بستن پنل تاریخچه
         this.closeHistory();
         
-        // اسکرول به بالای صفحه
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
-        });
-        
-        // نمایش اعلان موفقیت
-        this.showNotification('گفتگوی ذخیره شده با موفقیت بازیابی شد', 'success');
+        return true;
     }
     
     // نمایش دیالوگ تأیید حذف
@@ -2027,4 +2029,42 @@ document.addEventListener('DOMContentLoaded', () => {
             window.assistant.autoSaveCurrentChat();
         }
     });
-}); 
+    
+    // دکمه‌های ناوبری موبایل
+    const mobileHistoryBtn = document.getElementById('mobileHistoryBtn');
+    const mobileNewChatBtn = document.getElementById('mobileNewChatBtn');
+    const mobileSettingsBtn = document.getElementById('mobileSettingsBtn');
+    
+    if (mobileHistoryBtn) {
+        mobileHistoryBtn.addEventListener('click', () => {
+            window.assistant.handleHistoryFeature();
+            
+            // تغییر حالت فعال دکمه
+            mobileHistoryBtn.classList.add('active');
+            mobileNewChatBtn.classList.remove('active');
+            mobileSettingsBtn.classList.remove('active');
+        });
+    }
+    
+    if (mobileNewChatBtn) {
+        mobileNewChatBtn.addEventListener('click', () => {
+            window.assistant.createNewChat();
+            
+            // تغییر حالت فعال دکمه
+            mobileHistoryBtn.classList.remove('active');
+            mobileNewChatBtn.classList.add('active');
+            mobileSettingsBtn.classList.remove('active');
+        });
+    }
+    
+    if (mobileSettingsBtn) {
+        mobileSettingsBtn.addEventListener('click', () => {
+            window.assistant.openSettings();
+            
+            // تغییر حالت فعال دکمه
+            mobileHistoryBtn.classList.remove('active');
+            mobileNewChatBtn.classList.remove('active');
+            mobileSettingsBtn.classList.add('active');
+        });
+    }
+});
