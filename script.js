@@ -358,8 +358,12 @@ class AIAssistant {
     
     // ایجاد گفتگوی جدید
     createNewChat() {
+        console.log('ایجاد چت جدید - شروع');
+        
         // ذخیره گفتگوی فعلی قبل از ایجاد گفتگوی جدید
         this.autoSaveCurrentChat();
+        
+        console.log('چت قبلی ذخیره شد');
         
         // پاکسازی پیام‌های فعلی
         this.clearChatMessages();
@@ -641,52 +645,71 @@ class AIAssistant {
     
     // ذخیره خودکار گفتگوی فعلی در تاریخچه
     autoSaveCurrentChat() {
-        // اگر گفتگوی فعلی پیام داشته باشد، آن را به تاریخچه اضافه کنیم
-        if (this.conversations && this.conversations.length > 0) {
-            // عنوان گفتگو را از اولین پیام کاربر استخراج می‌کنیم
-            const firstUserMessage = this.conversations.find(msg => msg.sender === 'user');
-            const chatSummary = firstUserMessage ? this.getSummaryFromMessage(firstUserMessage.text) : 'گفتگوی بدون عنوان';
+        // یافتن گفتگوی فعلی
+        const conversation = this.conversations.find(c => c.id === this.currentConversationId);
+        
+        // اگر گفتگوی فعلی وجود ندارد یا هیچ پیامی ندارد، خارج شویم
+        if (!conversation || conversation.messages.length === 0) {
+            return;
+        }
+        
+        // بررسی اینکه حداقل یک پیام از کاربر وجود داشته باشد
+        const userMessages = conversation.messages.filter(msg => msg.sender === 'user');
+        if (userMessages.length === 0) {
+            return;
+        }
+        
+        // عنوان گفتگو را از اولین پیام کاربر استخراج می‌کنیم
+        const firstUserMessage = userMessages[0];
+        const chatSummary = firstUserMessage ? this.getSummaryFromMessage(firstUserMessage.text) : 'گفتگوی بدون عنوان';
+        
+        // بارگذاری تاریخچه فعلی
+        this.loadHistory();
+        
+        // بررسی اینکه این گفتگو قبلاً در تاریخچه ذخیره شده است یا خیر
+        const existingChatIndex = this.chatHistory.findIndex(chat => 
+            chat.conversation && chat.conversation.id === conversation.id
+        );
+        
+        // تاریخ و زمان فعلی
+        const timestamp = new Date();
+        
+        if (existingChatIndex !== -1) {
+            // اگر گفتگو قبلاً ذخیره شده است، آن را به‌روزرسانی کنیم
+            const existingChat = this.chatHistory[existingChatIndex];
             
-            // تعداد پیام‌ها
-            const messageCount = this.conversations.length;
+            // به‌روزرسانی پیام‌های گفتگو
+            existingChat.conversation.messages = JSON.parse(JSON.stringify(conversation.messages));
             
-            // بررسی اینکه این گفتگو قبلاً ذخیره شده است یا خیر
-            const existingChats = this.loadChatHistory();
-            const chatAlreadySaved = existingChats.some(chat => {
-                // بررسی تطابق محتوای پیام‌ها
-                if (chat.messages.length !== this.conversations.length) return false;
-                
-                for (let i = 0; i < chat.messages.length; i++) {
-                    // مقایسه متن پیام‌ها
-                    if (chat.messages[i].text !== this.conversations[i].text ||
-                        chat.messages[i].sender !== this.conversations[i].sender) {
-                        return false;
-                    }
-                }
-                return true;
+            // به‌روزرسانی زمان آخرین تغییر
+            existingChat.timestamp = timestamp;
+            
+            // به‌روزرسانی خلاصه
+            existingChat.summary = chatSummary;
+            
+            console.log('گفتگو به‌روزرسانی شد:', existingChat);
+        } else {
+            // اگر گفتگو جدید است، یک آیتم جدید ایجاد کنیم
+            const chatId = conversation.id;
+            
+            // ذخیره گفتگو در تاریخچه
+            this.chatHistory.push({
+                id: chatId,
+                summary: chatSummary,
+                timestamp: timestamp,
+                conversation: JSON.parse(JSON.stringify(conversation))
             });
             
-            // اگر این گفتگو قبلاً ذخیره نشده باشد، آن را ذخیره می‌کنیم
-            if (!chatAlreadySaved) {
-                const chatHistory = [{
-                    id: Date.now().toString(),
-                    date: new Date(),
-                    title: chatSummary,
-                    messageCount: messageCount,
-                    messages: this.conversations
-                }, ...existingChats];
-                
-                // محدود کردن تعداد گفتگوهای ذخیره شده به 100
-                const limitedHistory = chatHistory.slice(0, 100);
-                localStorage.setItem('chatHistory', JSON.stringify(limitedHistory));
-                
-                // مجدداً تاریخچه را نمایش می‌دهیم اگر پنل تاریخچه باز است
-                const historyPanel = document.getElementById('historyPanel');
-                if (historyPanel && historyPanel.classList.contains('active')) {
-                    this.renderChatHistory();
-                }
-            }
+            console.log('گفتگوی جدید در تاریخچه ذخیره شد:', chatId);
         }
+        
+        // محدود کردن تاریخچه به 100 گفتگو
+        if (this.chatHistory.length > 100) {
+            this.chatHistory.shift();
+        }
+        
+        // ذخیره در localStorage
+        this.saveChatHistory();
     }
     
     // پشتیبان‌گیری از تاریخچه
@@ -1997,25 +2020,47 @@ class AIAssistant {
     
     // بارگذاری چت از تاریخچه
     loadChatFromHistory(chatId) {
-        // یافتن چت موردنظر
-        const chat = this.chatHistory.find(c => c.id === chatId);
-        if (!chat) return;
+        console.log('در حال بارگذاری چت از تاریخچه:', chatId);
         
-        // تنظیم چت فعلی
-        this.selectedChatId = chatId;
-        this.currentConversationId = chatId;
+        // بارگذاری تاریخچه برای اطمینان از به‌روز بودن
+        this.loadHistory();
+        
+        // یافتن چت موردنظر در تاریخچه
+        const chatItem = this.chatHistory.find(c => c.id === chatId);
+        if (!chatItem || !chatItem.conversation) {
+            console.error('چت مورد نظر در تاریخچه یافت نشد:', chatId);
+            return false;
+        }
+        
+        console.log('چت یافت شد:', chatItem);
+        
+        // کپی کردن چت از تاریخچه به آرایه اصلی گفتگوها
+        const chatConversation = JSON.parse(JSON.stringify(chatItem.conversation));
+        
+        // یافتن گفتگوی مشابه در آرایه گفتگوها یا افزودن گفتگوی جدید
+        const existingIndex = this.conversations.findIndex(c => c.id === chatConversation.id);
+        if (existingIndex !== -1) {
+            // اگر قبلا وجود داشته، آن را به‌روزرسانی کنیم
+            this.conversations[existingIndex] = chatConversation;
+        } else {
+            // اگر جدید است، آن را به آرایه اضافه کنیم
+            this.conversations.push(chatConversation);
+        }
+        
+        // تنظیم گفتگوی فعلی
+        this.currentConversationId = chatConversation.id;
         
         // پاکسازی پیام‌های فعلی
         this.clearChatMessages();
         
         // نمایش پیام‌های چت
-        if (chat.messages && chat.messages.length > 0) {
+        if (chatConversation.messages && chatConversation.messages.length > 0) {
             this.hideWelcomeMessage();
             
             const chatMessages = document.querySelector('.chat-messages');
-            if (!chatMessages) return;
+            if (!chatMessages) return false;
             
-            chat.messages.forEach(msg => {
+            chatConversation.messages.forEach(msg => {
                 const messageElement = this.createMessageElement(msg.sender, msg.text);
                 chatMessages.appendChild(messageElement);
             });
@@ -2029,9 +2074,13 @@ class AIAssistant {
             this.showWelcomeMessage();
         }
         
+        // ذخیره‌سازی در localStorage
+        this.saveConversations();
+        
         // بستن پنل تاریخچه
         this.closeHistory();
         
+        console.log('چت با موفقیت بارگذاری شد:', chatConversation.id);
         return true;
     }
     
@@ -2200,52 +2249,123 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileNewChatBtn = document.getElementById('mobileNewChatBtn');
     const mobileSettingsBtn = document.getElementById('mobileSettingsBtn');
     
+    console.log('دکمه‌های موبایل یافت شدند:', {
+        mobileHistoryBtn: !!mobileHistoryBtn, 
+        mobileNewChatBtn: !!mobileNewChatBtn, 
+        mobileSettingsBtn: !!mobileSettingsBtn
+    });
+    
     if (mobileHistoryBtn) {
-        mobileHistoryBtn.addEventListener('click', () => {
-            // اطمینان از اینکه به نمونه اصلی AIAssistant دسترسی داریم
-            if (window.assistant) {
-                window.assistant.handleHistoryFeature();
-                console.log('دکمه تاریخچه موبایل کلیک شد');
+        mobileHistoryBtn.addEventListener('click', function() {
+            console.log('دکمه تاریخچه موبایل کلیک شد');
+            
+            // دسترسی مستقیم به عناصر پنل
+            const historyPanel = document.getElementById('historyPanel');
+            if (historyPanel) {
+                historyPanel.classList.add('active');
+                console.log('پنل تاریخچه فعال شد');
                 
-                // تغییر حالت فعال دکمه
-                mobileHistoryBtn.classList.add('active');
-                if (mobileNewChatBtn) mobileNewChatBtn.classList.remove('active');
-                if (mobileSettingsBtn) mobileSettingsBtn.classList.remove('active');
+                // اضافه کردن دکمه بستن در صورت نیاز
+                const closeHistoryBtn = document.getElementById('closeHistoryBtn');
+                if (closeHistoryBtn) {
+                    // اطمینان از اتصال رویداد کلیک
+                    closeHistoryBtn.removeEventListener('click', closeHistoryHandler);
+                    closeHistoryBtn.addEventListener('click', closeHistoryHandler);
+                }
+                
+                // فراخوانی متد از طریق اشاره به نمونه assistant
+                if (window.assistant) {
+                    window.assistant.loadHistory();
+                    window.assistant.renderChatHistory();
+                }
             } else {
-                console.error('نمونه assistant پیدا نشد');
+                console.error('پنل تاریخچه پیدا نشد!');
             }
+            
+            // تغییر حالت فعال دکمه
+            mobileHistoryBtn.classList.add('active');
+            if (mobileNewChatBtn) mobileNewChatBtn.classList.remove('active');
+            if (mobileSettingsBtn) mobileSettingsBtn.classList.remove('active');
         });
     }
     
     if (mobileNewChatBtn) {
-        mobileNewChatBtn.addEventListener('click', () => {
+        mobileNewChatBtn.addEventListener('click', function() {
+            console.log('دکمه چت جدید موبایل کلیک شد');
+            
             if (window.assistant) {
                 window.assistant.createNewChat();
-                console.log('دکمه چت جدید موبایل کلیک شد');
-                
-                // تغییر حالت فعال دکمه
-                if (mobileHistoryBtn) mobileHistoryBtn.classList.remove('active');
-                mobileNewChatBtn.classList.add('active');
-                if (mobileSettingsBtn) mobileSettingsBtn.classList.remove('active');
-            } else {
-                console.error('نمونه assistant پیدا نشد');
+                console.log('چت جدید ایجاد شد');
             }
+            
+            // تغییر حالت فعال دکمه
+            if (mobileHistoryBtn) mobileHistoryBtn.classList.remove('active');
+            mobileNewChatBtn.classList.add('active');
+            if (mobileSettingsBtn) mobileSettingsBtn.classList.remove('active');
         });
     }
     
     if (mobileSettingsBtn) {
-        mobileSettingsBtn.addEventListener('click', () => {
-            if (window.assistant) {
-                window.assistant.openSettings();
-                console.log('دکمه تنظیمات موبایل کلیک شد');
+        mobileSettingsBtn.addEventListener('click', function() {
+            console.log('دکمه تنظیمات موبایل کلیک شد');
+            
+            // دسترسی مستقیم به عناصر پنل
+            const settingsPanel = document.getElementById('settingsPanel');
+            if (settingsPanel) {
+                settingsPanel.classList.add('active');
+                console.log('پنل تنظیمات فعال شد');
                 
-                // تغییر حالت فعال دکمه
-                if (mobileHistoryBtn) mobileHistoryBtn.classList.remove('active');
-                if (mobileNewChatBtn) mobileNewChatBtn.classList.remove('active');
-                mobileSettingsBtn.classList.add('active');
+                // اضافه کردن دکمه بستن در صورت نیاز
+                const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+                if (closeSettingsBtn) {
+                    // اطمینان از اتصال رویداد کلیک
+                    closeSettingsBtn.removeEventListener('click', closeSettingsHandler);
+                    closeSettingsBtn.addEventListener('click', closeSettingsHandler);
+                }
+                
+                // فراخوانی متدهای لازم از طریق نمونه assistant
+                if (window.assistant) {
+                    window.assistant.loadSavedSettings();
+                    
+                    // بررسی اتصال API اگر کلید وجود داشته باشد
+                    const apiKey = document.getElementById('apiKey').value;
+                    if (apiKey) {
+                        window.assistant.checkAPIConnection();
+                    }
+                }
             } else {
-                console.error('نمونه assistant پیدا نشد');
+                console.error('پنل تنظیمات پیدا نشد!');
             }
+            
+            // تغییر حالت فعال دکمه
+            if (mobileHistoryBtn) mobileHistoryBtn.classList.remove('active');
+            if (mobileNewChatBtn) mobileNewChatBtn.classList.remove('active');
+            mobileSettingsBtn.classList.add('active');
         });
+    }
+    
+    // تعریف توابع برای استفاده در رویدادهای بستن پنل‌ها
+    function closeHistoryHandler() {
+        const historyPanel = document.getElementById('historyPanel');
+        if (historyPanel) {
+            historyPanel.classList.remove('active');
+            console.log('پنل تاریخچه بسته شد');
+        }
+        
+        if (mobileHistoryBtn) {
+            mobileHistoryBtn.classList.remove('active');
+        }
+    }
+    
+    function closeSettingsHandler() {
+        const settingsPanel = document.getElementById('settingsPanel');
+        if (settingsPanel) {
+            settingsPanel.classList.remove('active');
+            console.log('پنل تنظیمات بسته شد');
+        }
+        
+        if (mobileSettingsBtn) {
+            mobileSettingsBtn.classList.remove('active');
+        }
     }
 });
