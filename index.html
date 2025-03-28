@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#4F46E5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="دستیار هوشمند">
+    <meta name="description" content="دستیار هوش مصنوعی با قابلیت چت و یادگیری">
+    <title>دستیار هوش مصنوعی احسان</title>
+    <link rel="stylesheet" href="styles-new.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="images/logo-small.png">
+    <link rel="apple-touch-icon" href="images/logo-large.png">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- دکمه منوی موبایل -->
+    <button class="mobile-menu-btn">
+        <span></span>
+    </button>
+
+    <!-- اورلی تیره کردن پس‌زمینه در موبایل -->
+    <div class="mobile-overlay" id="mobileOverlay"></div>
+
+    <div class="sidebar">
+        <div class="logo">
+            <img src="images/logo-small.png" class="whale-icon" alt="لوگو">
+        </div>
+        <div class="sidebar-icons">
+            <button class="icon-button" id="historyButton" title="تاریخچه پیام‌ها">
+                <img src="images/history-icon.png" alt="تاریخچه" class="icon">
+            </button>
+            <button class="icon-button" id="newChatButton">
+                <img src="images/new-chat-icon.png" alt="چت جدید" class="icon">
+            </button>
+        </div>
+        <div class="settings-container">
+            <button class="icon-button" id="settingsButton">
+                <img src="images/settings-icon.png" alt="تنظیمات" class="icon">
+            </button>
+        </div>
+    </div>
+    
+    <!-- پنل تاریخچه -->
+    <div class="history-panel" id="historyPanel">
+        <div class="panel-header">
+            <h2>تاریخچه پیام‌ها</h2>
+            <button class="close-btn" id="closeHistoryBtn">×</button>
+        </div>
+        
+        <div class="panel-content">
+            <div class="history-actions">
+                <button class="history-action-btn" id="backupHistoryBtn">
+                    <i class="fas fa-download"></i>
+                    پشتیبان‌گیری
+                </button>
+                <button class="history-action-btn" id="restoreHistoryBtn">
+                    <i class="fas fa-upload"></i>
+                    بازیابی
+                </button>
+            </div>
+            
+            <div class="history-container" id="historyContainer">
+                <!-- تاریخچه پیام‌ها اینجا قرار می‌گیرد -->
+            </div>
+            
+            <div class="no-history" id="noHistory">
+                <i class="fas fa-inbox fa-3x"></i>
+                <p>تاریخچه‌ای موجود نیست</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- پنل تنظیمات -->
+    <div class="settings-panel" id="settingsPanel">
+        <div class="settings-header">
+            <h2>تنظیمات</h2>
+            <button class="close-btn" id="closeSettingsBtn">×</button>
+        </div>
+        
+        <div class="settings-content">
+            <div class="settings-section">
+                <div class="connection-status">
+                    <span class="status-indicator" id="connectionStatus"></span>
+                    <span class="status-text">وضعیت اتصال API</span>
+                </div>
+                
+                <div class="settings-group">
+                    <label for="apiKey">کد API اوپن روتر:</label>
+                    <div class="api-key-container">
+                        <input type="password" id="apiKey" placeholder="کد API خود را وارد کنید">
+                        <button class="toggle-password" id="togglePassword">
+                            <i class="fa fa-eye"></i>
+                        </button>
+                    </div>
+                    <p class="help-text">
+                        برای دریافت کد API به <a href="https://openrouter.ai/keys" target="_blank">سایت اوپن روتر</a> مراجعه کنید.
+                    </p>
+                </div>
+                
+                <div class="settings-group">
+                    <label for="modelSelect">انتخاب مدل هوش مصنوعی:</label>
+                    <div class="select-container">
+                        <div class="custom-select">
+                            <div class="select-search">
+                                <input type="text" id="modelSearchInput" placeholder="جستجو و انتخاب مدل...">
+                                <i class="fas fa-search search-icon"></i>
+                            </div>
+                            <div class="select-dropdown">
+                                <ul id="modelOptions" class="model-list"></ul>
+                            </div>
+                            <div class="selected-display" id="selectedModelDisplay">
+                                <span>انتخاب مدل...</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="refreshModelsBtn" class="refresh-models-btn">
+                        <i class="fas fa-sync-alt"></i>
+                        بارگذاری لیست مدل‌ها
+                    </button>
+                </div>
+                
+                <div class="settings-group">
+                    <label>تم رنگی:</label>
+                    <div class="color-themes-container">
+                        <button class="color-theme-option active" data-theme="default">
+                            <span class="color-preview default"></span>
+                            <span>پیش‌فرض</span>
+                        </button>
+                        <button class="color-theme-option" data-theme="blue">
+                            <span class="color-preview blue"></span>
+                            <span>آبی</span>
+                        </button>
+                        <button class="color-theme-option" data-theme="green">
+                            <span class="color-preview green"></span>
+                            <span>سبز</span>
+                        </button>
+                        <button class="color-theme-option" data-theme="orange">
+                            <span class="color-preview orange"></span>
+                            <span>نارنجی</span>
+                        </button>
+                        <button class="color-theme-option" data-theme="red">
+                            <span class="color-preview red"></span>
+                            <span>قرمز</span>
+                        </button>
+                        <button class="color-theme-option" data-theme="pink">
+                            <span class="color-preview pink"></span>
+                            <span>صورتی</span>
+                        </button>
+                        <button class="color-theme-option" data-theme="dark">
+                            <span class="color-preview dark"></span>
+                            <span>تیره</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="settings-group">
+                    <label for="themeToggle">حالت تیره/روشن:</label>
+                    <div class="theme-toggle-container">
+                        <span>روشن</span>
+                        <label class="switch">
+                            <input type="checkbox" id="themeToggle">
+                            <span class="slider round"></span>
+                        </label>
+                        <span>تیره</span>
+                    </div>
+                </div>
+                
+                <div class="settings-group">
+                    <label for="toneSelect">لحن پاسخ‌ها:</label>
+                    <select id="toneSelect">
+                        <option value="professional">حرفه‌ای</option>
+                        <option value="friendly">دوستانه</option>
+                        <option value="casual">غیررسمی</option>
+                        <option value="formal">رسمی</option>
+                        <option value="enthusiastic">پرانرژی</option>
+                        <option value="humorous">طنزآمیز</option>
+                        <option value="empathetic">همدلانه</option>
+                        <option value="technical">فنی</option>
+                        <option value="simplistic">ساده</option>
+                        <option value="poetic">شاعرانه</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="settings-footer">
+                <button id="saveSettingsBtn" class="save-btn">ذخیره تنظیمات</button>
+            </div>
+        </div>
+    </div>
+    
+    <main class="main-content">
+        <div class="chat-container">
+            <div class="welcome-message">
+                <img src="images/logo-large.png" class="large-logo" alt="لوگو">
+                <h1>سلام، من دستیار هوش مصنوعی احسان هستم</h1>
+                <p>چطور می‌توانم به شما کمک کنم؟</p>
+            </div>
+            
+            <div class="input-container">
+                <div class="message-input-wrapper">
+                    <textarea placeholder="پیام خود را بنویسید" class="message-input"></textarea>
+                    <div class="input-buttons">
+                        <button class="attach-button" id="attachButton">
+                            <img src="images/attach-icon.png" alt="پیوست" class="icon">
+                        </button>
+                        <button class="send-button" id="sendButton">
+                            <img src="images/send-icon.png" alt="ارسال" class="icon">
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer-text">
+                توسعه دهنده: احسان شمسی
+            </div>
+        </div>
+    </main>
+
+    <!-- دیالوگ تأیید حذف -->
+    <div class="confirm-dialog" id="confirmDialog">
+        <div class="confirm-content">
+            <div class="confirm-title">آیا از حذف این پیام اطمینان دارید؟</div>
+            <div class="confirm-actions">
+                <button class="confirm-btn confirm-cancel" id="cancelDelete">انصراف</button>
+                <button class="confirm-btn confirm-delete" id="confirmDelete">حذف</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- فایل‌های JavaScript -->
+    <script src="script.js"></script>
+    
+    <!-- اسکریپت برای اتصال دکمه‌ها به توابع -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // بعد از راه‌اندازی برنامه اصلی، رویدادهای اضافی را متصل می‌کنیم
+            const assistant = window.assistant;
+            
+            // دکمه‌های نوار کناری
+            document.getElementById('historyButton').addEventListener('click', () => {
+                assistant.handleHistoryFeature();
+            });
+            
+            document.getElementById('newChatButton').addEventListener('click', () => {
+                assistant.createNewChat();
+            });
+            
+            document.getElementById('settingsButton').addEventListener('click', () => {
+                assistant.openSettings();
+            });
+            
+            // دکمه‌های پشتیبان‌گیری و بازیابی
+            document.getElementById('backupHistoryBtn').addEventListener('click', () => {
+                assistant.backupHistory();
+            });
+            
+            document.getElementById('restoreHistoryBtn').addEventListener('click', () => {
+                assistant.restoreHistory();
+            });
+            
+            // دکمه پیوست
+            document.getElementById('attachButton').addEventListener('click', () => {
+                assistant.uploadFile();
+            });
+        });
+    </script>
+</body>
+</html> 
