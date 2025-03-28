@@ -15,6 +15,11 @@ class AIAssistant {
         this.temperatureInput = document.getElementById('temperature');
         this.darkThemeSwitch = document.getElementById('darkThemeSwitch');
         this.customPromptInput = document.getElementById('systemPrompt');
+        this.sidebar = document.querySelector('.sidebar');
+        this.mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+        this.settingsButton = document.getElementById('settingsButton');
+        this.historyButton = document.getElementById('historyButton');
+        this.newChatButton = document.getElementById('newChatButton');
         
         // متغیرهای داخلی
         this.isScrolledToBottom = true;
@@ -74,6 +79,28 @@ class AIAssistant {
             }
         });
         
+        // دکمه‌های ساید بار
+        if (this.settingsButton) {
+            this.settingsButton.addEventListener('click', () => {
+                console.log('دکمه تنظیمات کلیک شد');
+                this.openSettings();
+            });
+        }
+        
+        if (this.historyButton) {
+            this.historyButton.addEventListener('click', () => {
+                console.log('دکمه تاریخچه کلیک شد');
+                this.handleHistoryFeature();
+            });
+        }
+        
+        if (this.newChatButton) {
+            this.newChatButton.addEventListener('click', () => {
+                console.log('دکمه چت جدید کلیک شد');
+                this.createNewChat();
+            });
+        }
+        
         // دکمه ارسال پیام
         this.sendButton.addEventListener('click', () => this.sendMessage());
 
@@ -124,7 +151,7 @@ class AIAssistant {
             }
         });
         
-        // اتصال مجدد رویدادهای تم‌های رنگی در تنظیمات
+        // اتصال مجدد رویدادهای تم‌های رنگی - مهم برای کارکرد صحیح دکمه‌های تم
         this.initColorThemeEvents();
         
         // بارگذاری تم ذخیره شده
@@ -2102,9 +2129,10 @@ class AIAssistant {
 
 // مهلت کوتاه برای اطمینان از بارگذاری کامل DOM
 document.addEventListener('DOMContentLoaded', () => {
-    // ایجاد نمونه از کلاس دستیار
+    // ایجاد نمونه‌ای از کلاس اصلی برنامه و ذخیره آن در متغیر جهانی
     window.assistant = new AIAssistant();
-    
+    console.log('AIAssistant initialized');
+
     // رجیستر سرویس ورکر برای PWA
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('service-worker.js')
@@ -2158,15 +2186,16 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('درخواست چت جدید از طریق شورت‌کات');
         window.assistant.createNewChat();
     }
-    
-    // افزودن رویداد برای ذخیره خودکار چت قبل از رفرش یا بستن صفحه
+
+    // اضافه کردن رویداد قبل از بارگذاری مجدد صفحه برای ذخیره خودکار گفتگو
     window.addEventListener('beforeunload', () => {
         if (window.assistant) {
             window.assistant.autoSaveCurrentChat();
         }
     });
     
-    // دکمه‌های ناوبری موبایل
+    // دکمه‌های ناوبری موبایل - این بخش مهم است و باید در اینجا باقی بماند
+    // این رویدادها خارج از کلاس اصلی تعریف شده‌اند
     const mobileHistoryBtn = document.getElementById('mobileHistoryBtn');
     const mobileNewChatBtn = document.getElementById('mobileNewChatBtn');
     const mobileSettingsBtn = document.getElementById('mobileSettingsBtn');

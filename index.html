@@ -259,18 +259,7 @@
             // بعد از راه‌اندازی برنامه اصلی، رویدادهای اضافی را متصل می‌کنیم
             const assistant = window.assistant;
             
-            // دکمه‌های نوار کناری
-            document.getElementById('historyButton').addEventListener('click', () => {
-                assistant.handleHistoryFeature();
-            });
-            
-            document.getElementById('newChatButton').addEventListener('click', () => {
-                assistant.createNewChat();
-            });
-            
-            document.getElementById('settingsButton').addEventListener('click', () => {
-                assistant.openSettings();
-            });
+            // رویدادهای نوار کناری و تنظیمات در داخل کلاس AIAssistant منتقل شده‌اند
             
             // دکمه‌های پشتیبان‌گیری و بازیابی
             document.getElementById('backupHistoryBtn').addEventListener('click', () => {
